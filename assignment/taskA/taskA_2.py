@@ -40,7 +40,7 @@ def optimize_single_day(day):
     T_ok = fixed_data["temp_OK_threshold"]
     T_out = fixed_data["outdoor_temperature"] #outdoor temperature at time t
     H_high = fixed_data["humidity_threshold"]
-    P_overline = fixed_data["heating_max_power"] #this is written as P_r but we only have 1 max power heating ? 
+    P_overline = fixed_data["heating_max_power"] #this is written as P_r but we only have 1 max power heating ?
     T_circ = -3 #read from Systemcharacticeristics
     M_low = T_low - T_circ
     M_high = T_ok - T_circ
@@ -61,24 +61,24 @@ def optimize_single_day(day):
     OFF = model.addVars(hours, vtype=GRB.BINARY, name="OFF")
     V = model.addVars(hours, vtype=GRB.BINARY, name="V")
     hum1 = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum1")
-    hum2 = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum2")
+    # hum2 = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum2")
 
     #Constraints
 
     #temp
     model.addConstrs((temp1[t] == temp1[t-1] - xi_exh*(temp1[t-1]-temp2[t-1]) - xi_loss*(temp1[t-1]-T_out[t-1]) + xi_conv*p1[t-1]-xi_cool*V[t-1]+xi_occ*RO1[t-1] for t in range(1,hours)), name="temp1_balance_{t}")
-    model.addConstrs((temp2[t] == temp2[t-1] - xi_exh*(temp2[t-1]-temp1[t-1]) - xi_loss*(temp2[t-1]-T_out[t-1]) + xi_conv*p2[t-1]-xi_cool*V[t-1]+xi_occ*RO2[t-1] for t in range(1,hours)), name="temp2_balance_{t}")
+    # model.addConstrs((temp2[t] == temp2[t-1] - xi_exh*(temp2[t-1]-temp1[t-1]) - xi_loss*(temp2[t-1]-T_out[t-1]) + xi_conv*p2[t-1]-xi_cool*V[t-1]+xi_occ*RO2[t-1] for t in range(1,hours)), name="temp2_balance_{t}")
 
     #humidty
-    model.addConstrs((hum1[t] == hum1[t-1] + eta_occ*RO1[t-1]-eta_vent*V[t-1] for t in range(1,hours)))
-    model.addConstrs((hum2[t] == hum2[t-1] + eta_occ*RO2[t-1]-eta_vent*V[t-1] for t in range(1,hours)))
+    model.addConstrs((hum1[t] == hum1[t-1] + eta_occ*(RO1[t-1]+RO2[t-1])-eta_vent*V[t-1] for t in range(1,hours)))
+    # model.addConstrs((hum2[t] == hum2[t-1] + eta_occ*RO2[t-1]-eta_vent*V[t-1] for t in range(1,hours)))
 
     #Ventilator
     for t in range(hours):
         if t >= 2:
             model.addConstr(V[t] >= ON[t] + ON[t-1] + ON[t-2])
         elif t == 1:
-            model.addConstr(V[t] >= ON[t] + ON[t-1])        
+            model.addConstr(V[t] >= ON[t] + ON[t-1])
         #we set t=0 above
 
     model.addConstrs((OFF[t] <= V[t-1]for t in range(1, hours)))
@@ -114,7 +114,7 @@ def optimize_single_day(day):
 
     #Humidity constraints
     model.addConstrs((hum1[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
-    model.addConstrs((hum2[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
+    # model.addConstrs((hum2[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
 
     #Objective
     obj = quicksum(lambda_t[t]*(p1[t] + p2[t] + p_vent*V[t])for t in range(hours))
@@ -123,8 +123,8 @@ def optimize_single_day(day):
 
 
     #Initializie
-    init_temp = fixed_data['initial_temperature']  
-    init_hum = fixed_data['initial_humidity']      
+    init_temp = fixed_data['initial_temperature']
+    init_hum = fixed_data['initial_humidity']
 
     # Temperature Initialization
     model.addConstr(temp1[0] == init_temp, name="Init_Temp_R1")
@@ -134,7 +134,7 @@ def optimize_single_day(day):
 
     # Humidity Initialization
     model.addConstr(hum1[0] == init_hum, name="Init_Hum_R1")
-    model.addConstr(hum2[0] == init_hum, name="Init_Hum_R2")
+    # model.addConstr(hum2[0] == init_hum, name="Init_Hum_R2")
 
     # Ventilization Initialization
     model.addConstr(V[0] == ON[0]) #the init data forces teh ventilator to start so we need to also start ON
@@ -143,7 +143,7 @@ def optimize_single_day(day):
 
     #optimization / debugging
     model.optimize()
-
+    hum2 = -1000
     get_feedback(
         model, hours, lambda_t, p_vent,
         temp1, temp2, p1, p2, V, hum1, hum2,
@@ -158,10 +158,10 @@ def optimize_single_day(day):
             'p2':    [p2[t].X for t in range(hours)],
             'V':     [V[t].X for t in range(hours)],
             'hum1':  [hum1[t].X for t in range(hours)],
-            'hum2':  [hum2[t].X for t in range(hours)],
-            'price': lambda_t, 
-            'occ1':  RO1,      
-            'occ2':  RO2       
+            # 'hum2':  [hum2[t].X for t in range(hours)],
+            'price': lambda_t,
+            'occ1':  RO1,
+            'occ2':  RO2
         }
     else:
         print(f"Day {day} Infeasible!")
