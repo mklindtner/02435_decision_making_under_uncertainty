@@ -1,7 +1,7 @@
 from gurobipy import GRB
 
 #chatbot did this i cba to figure out gurobis debugging tools.
-def get_feedback(model, hours, lambda_t, p_vent, temp1, temp2, p1, p2, V, hum1, hum2, z1_cold, z1_hot, z2_cold, ON):
+def get_feedback(model, hours, lambda_t, p_vent, temp1, temp2, p1, p2, V, hum, z1_cold, z1_hot, z2_cold, ON):
     """
     Prints optimization results for a single day using the provided local variables.
     """
@@ -24,7 +24,7 @@ def get_feedback(model, hours, lambda_t, p_vent, temp1, temp2, p1, p2, V, hum1, 
             p1_val = p1[t].X
             p2_val = p2[t].X
             vent_on = V[t].X
-            hum1_val = hum1[t].X
+            hum_val = hum[t].X
             
             # Check for Overrules (active binary variables)
             alerts = []
@@ -39,7 +39,7 @@ def get_feedback(model, hours, lambda_t, p_vent, temp1, temp2, p1, p2, V, hum1, 
             current_price = lambda_t[t] if hasattr(lambda_t, '__getitem__') else lambda_t
 
             # Print row formatted
-            print(f"{t:<5} | {r1_t:<8.2f} | {r2_t:<8.2f} | {p1_val:<8.2f} | {p2_val:<8.2f} | {int(vent_on):<5} | {hum1_val:<7.1f} | {alert_str}")
+            print(f"{t:<5} | {r1_t:<8.2f} | {r2_t:<8.2f} | {p1_val:<8.2f} | {p2_val:<8.2f} | {int(vent_on):<5} | {hum_val:<7.1f} | {alert_str}")
 
             results.append({
                 "Hour": t,

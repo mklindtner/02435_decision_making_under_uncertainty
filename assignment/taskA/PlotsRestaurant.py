@@ -17,7 +17,7 @@ def plot_HVAC_results(HVAC_results):
     h_r2    = np.concatenate([day['p2'] for day in HVAC_results])
     v       = np.concatenate([day['V'] for day in HVAC_results])
     # We usually plot Humidity for Room 1, or average. Here is Room 1:
-    Hum     = np.concatenate([day['hum1'] for day in HVAC_results]) 
+    Hum     = np.concatenate([day['hum'] for day in HVAC_results]) 
     price   = np.concatenate([day['price'] for day in HVAC_results])
     Occ_r1  = np.concatenate([day['occ1'] for day in HVAC_results])
     Occ_r2  = np.concatenate([day['occ2'] for day in HVAC_results])
@@ -47,7 +47,7 @@ def plot_HVAC_results(HVAC_results):
     axes[1].grid(True)
     
     # Ventilation and Humidity
-    axes[2].step(T, v, where='mid', label='Ventilation ON', color='tab:blue')
+    axes[2].step(T, v*100, where='mid', label='Ventilation ON', color='tab:blue')
     axes[2].plot(T, Hum, label='Humidity (%)', color='tab:orange', marker='o')
     axes[2].axhline(45, color='gray', linestyle='--', alpha=0.5)
     axes[2].axhline(60, color='gray', linestyle='--', alpha=0.5)

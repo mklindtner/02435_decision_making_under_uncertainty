@@ -60,18 +60,16 @@ def optimize_single_day(day):
     ON = model.addVars(hours, vtype=GRB.BINARY, name="ON")
     OFF = model.addVars(hours, vtype=GRB.BINARY, name="OFF")
     V = model.addVars(hours, vtype=GRB.BINARY, name="V")
-    hum1 = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum1")
-    # hum2 = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum2")
+    hum = model.addVars(hours, lb=0, ub=100, vtype=GRB.CONTINUOUS, name="hum")
 
     #Constraints
 
     #temp
-    model.addConstrs((temp1[t] == temp1[t-1] - xi_exh*(temp1[t-1]-temp2[t-1]) - xi_loss*(temp1[t-1]-T_out[t-1]) + xi_conv*p1[t-1]-xi_cool*V[t-1]+xi_occ*RO1[t-1] for t in range(1,hours)), name="temp1_balance_{t}")
-    # model.addConstrs((temp2[t] == temp2[t-1] - xi_exh*(temp2[t-1]-temp1[t-1]) - xi_loss*(temp2[t-1]-T_out[t-1]) + xi_conv*p2[t-1]-xi_cool*V[t-1]+xi_occ*RO2[t-1] for t in range(1,hours)), name="temp2_balance_{t}")
+    model.addConstrs((temp1[t] == temp1[t-1] - xi_exh*(temp2[t-1]-temp1[t-1]) - xi_loss*(temp1[t-1]-T_out[t-1]) + xi_conv*p1[t-1]-xi_cool*V[t-1]+xi_occ*RO1[t-1] for t in range(1,hours)), name="temp1_balance_{t}")
+    model.addConstrs((temp2[t] == temp2[t-1] - xi_exh*(temp1[t-1]-temp2[t-1]) - xi_loss*(temp2[t-1]-T_out[t-1]) + xi_conv*p2[t-1]-xi_cool*V[t-1]+xi_occ*RO2[t-1] for t in range(1,hours)), name="temp2_balance_{t}")
 
-    #humidty
-    model.addConstrs((hum1[t] == hum1[t-1] + eta_occ*(RO1[t-1]+RO2[t-1])-eta_vent*V[t-1] for t in range(1,hours)))
-    # model.addConstrs((hum2[t] == hum2[t-1] + eta_occ*RO2[t-1]-eta_vent*V[t-1] for t in range(1,hours)))
+    #humidity
+    model.addConstrs((hum[t] == hum[t-1] + eta_occ*(RO1[t-1]+RO2[t-1])-eta_vent*V[t-1] for t in range(1,hours)))
 
     #Ventilator
     for t in range(hours):
@@ -113,8 +111,7 @@ def optimize_single_day(day):
 
 
     #Humidity constraints
-    model.addConstrs((hum1[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
-    # model.addConstrs((hum2[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
+    model.addConstrs((hum[t] - H_high <= M_hum*V[t] for t in range(1,hours)))
 
     #Objective
     obj = quicksum(lambda_t[t]*(p1[t] + p2[t] + p_vent*V[t])for t in range(hours))
@@ -133,8 +130,7 @@ def optimize_single_day(day):
     model.addConstr((T_ok - temp2[0] <= M_high*(1 + z2_cold[0])), name="R2_LowTemp_Overrule_Init") #-||-
 
     # Humidity Initialization
-    model.addConstr(hum1[0] == init_hum, name="Init_Hum_R1")
-    # model.addConstr(hum2[0] == init_hum, name="Init_Hum_R2")
+    model.addConstr(hum[0] == init_hum, name="Init_Hum_R1")
 
     # Ventilization Initialization
     model.addConstr(V[0] == ON[0]) #the init data forces teh ventilator to start so we need to also start ON
@@ -143,10 +139,9 @@ def optimize_single_day(day):
 
     #optimization / debugging
     model.optimize()
-    hum2 = -1000
     get_feedback(
         model, hours, lambda_t, p_vent,
-        temp1, temp2, p1, p2, V, hum1, hum2,
+        temp1, temp2, p1, p2, V, hum,
         z1_cold, z1_hot, z2_cold, ON
     )
 
@@ -157,8 +152,7 @@ def optimize_single_day(day):
             'p1':    [p1[t].X for t in range(hours)],
             'p2':    [p2[t].X for t in range(hours)],
             'V':     [V[t].X for t in range(hours)],
-            'hum1':  [hum1[t].X for t in range(hours)],
-            # 'hum2':  [hum2[t].X for t in range(hours)],
+            'hum':  [hum[t].X for t in range(hours)],
             'price': lambda_t,
             'occ1':  RO1,
             'occ2':  RO2
